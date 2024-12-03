@@ -7,6 +7,7 @@ import random
 class GUIManager:
     def __init__(self):
         pygame.init()
+        pygame.mixer.init()  # Initialize the mixer for sound effects
         self.screen_width = 1024  # Increased width
         self.screen_height = 768  # Increased height
         self.bg_color = (30, 30, 30)
@@ -18,10 +19,11 @@ class GUIManager:
         self.powerup_names = {
             'reroll_single_dice': 'Reroll Single Dice',
             'double_tokens_if_win': 'Double Tokens If Win',
-            'set_dice_to_one': 'Set Dice to 1',
+            'set_dice_to_one': 'Set Dice to ①',
             'set_dice_to_number': 'Set Dice to Desired Number'
         }
         self.load_assets()  # Moved after defining powerup_names
+        self.load_sounds()   # Load sound effects
 
     def load_assets(self):
         # Load images and other assets
@@ -34,6 +36,14 @@ class GUIManager:
         for key in self.powerup_names.keys():
             image = pygame.image.load(f'images/powerups/{key}.png').convert_alpha()
             self.assets['powerups'][key] = image  # Keep original size
+
+    def load_sounds(self):
+        # Load sound effects
+        self.sounds = {}
+        self.sounds['button_click'] = pygame.mixer.Sound('sounds/button_click.wav')
+        self.sounds['dice_roll'] = pygame.mixer.Sound('sounds/dice_roll.wav')
+        self.sounds['powerup_purchase'] = pygame.mixer.Sound('sounds/powerup_purchase.wav')
+        self.sounds['powerup_apply'] = pygame.mixer.Sound('sounds/powerup_apply.wav')
 
     def load_image(self, path):
         image = pygame.image.load(path).convert_alpha()
@@ -92,6 +102,8 @@ class GUIManager:
                     self.current_color = self.base_color
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if self.rect.collidepoint(event.pos):
+                    # Play button click sound
+                    self.gui_manager.sounds['button_click'].play()
                     self.callback()
 
     class ImageButton:
@@ -142,6 +154,8 @@ class GUIManager:
                     self.current_color = self.base_color
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if self.rect.collidepoint(event.pos):
+                    # Play button click sound
+                    self.gui_manager.sounds['button_click'].play()
                     self.callback()
 
     def create_button(self, rect, text, callback, font_size=36):
@@ -150,7 +164,7 @@ class GUIManager:
     def create_image_button(self, rect, image, text, callback, font_size=24):
         return self.ImageButton(self, rect, image, text, callback, font_size)
 
-    # New method for dice reroll animation
+    # Updated method for dice reroll animation with sound effect
     def animate_dice_reroll(self, num_dice, position, duration=500, fps=30):
         """
         Animate the dice reroll by rapidly changing dice faces.
@@ -163,6 +177,9 @@ class GUIManager:
         """
         frames = int(duration / (1000 / fps))
         clock = pygame.time.Clock()
+
+        # Play dice roll sound
+        self.sounds['dice_roll'].play()
 
         for _ in range(frames):
             self.clear_screen()

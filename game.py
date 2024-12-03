@@ -1,5 +1,3 @@
-# game.py
-
 from gui_manager import GUIManager
 from player import Player, AIPlayer
 from dice_game import DiceGame
@@ -308,6 +306,8 @@ class Game:
         if self.player_tokens >= price:
             self.player_tokens -= price
             self.player.add_powerup(powerup_key)
+            # Play power-up purchase sound
+            self.gui.sounds['powerup_purchase'].play()
             # Directly update the shop display without showing a confirmation screen
         else:
             # Not enough tokens

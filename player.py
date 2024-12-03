@@ -2,7 +2,7 @@
 
 from dice import DiceSet
 import random
-import config  # Import config.py
+import config
 
 class Player:
     def __init__(self, name):
@@ -56,6 +56,7 @@ class Player:
 
     def add_powerup(self, powerup_type, quantity=1):
         self.inventory[powerup_type] += quantity
+
 
 class AIPlayer(Player):
     def __init__(self, name, level):

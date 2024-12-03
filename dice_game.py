@@ -27,7 +27,7 @@ class DiceGame:
         self.double_reward_multiplier = 1  # Multiplier for double tokens power-up
 
     def start(self):
-        # Initialize both players' dice
+        # Initialize both players' dice without playing dice roll sound
         self.player.roll_dice()
         self.opponent.roll_dice()
 
@@ -165,6 +165,9 @@ class DiceGame:
             # No power-ups of this type left
             return
 
+        # Play power-up apply sound
+        self.gui.sounds['powerup_apply'].play()
+
         if powerup_key == 'reroll_single_dice':
             # Ask the player which dice to reroll
             dice_index = self.gui.select_dice("Select a dice to reroll:", self.player.get_dice_values())
@@ -174,7 +177,7 @@ class DiceGame:
                 self.player.calculate_score(self.score_calculator)
         elif powerup_key == 'set_dice_to_one':
             # Ask the player which dice to set to 1
-            dice_index = self.gui.select_dice("Select a dice to set to 1:", self.player.get_dice_values())
+            dice_index = self.gui.select_dice("Select a dice to set to ①:", self.player.get_dice_values())
             if dice_index is not None:
                 self.player.use_powerup(powerup_key, dice_index)
                 # Recalculate the score after using the power-up
@@ -214,6 +217,8 @@ class DiceGame:
                 self.gui.animate_dice_reroll(num_dice=5, position=(600, 70))
             # Perform the actual reroll
             self.opponent.roll_dice()
+            # Removed redundant dice roll sound
+            # self.gui.sounds['dice_roll'].play()
             self.opponent.calculate_score(self.score_calculator)
             if self.player_stopped:
                 # If player has stopped, AI must stop after this reroll
