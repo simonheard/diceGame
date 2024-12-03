@@ -21,6 +21,7 @@ class DiceGame:
         self.game_over = False
         self.debug = debug  # Add debug flag
         self.player_final_turn = False  # Flag to indicate if player is on final turn
+        self.return_to_menu_clicked = False  # Initialize flag
 
     def start(self):
         # Initialize both players' dice
@@ -91,21 +92,56 @@ class DiceGame:
         self.gui.display_message("Your Turn", (50, 30))
         self.gui.display_dice(self.player.get_dice_values(), (50, 80))
         self.gui.display_message(f"Current Score: {self.player.score}", (50, 180))
+
+        # Create buttons for actions
         if self.player_final_turn:
-            self.gui.display_message("Final Turn! Press 'R' to reroll or 'S' to stop.", (50, 220))
+            action_message = "Final Turn! Choose an action."
         else:
-            self.gui.display_message("Press 'R' to reroll or 'S' to stop.", (50, 220))
-        self.gui.update_screen()
-        action = self.get_player_action()
-        if action == 'reroll':
+            action_message = "Choose an action."
+        self.gui.display_message(action_message, (50, 220))
+
+        reroll_button = self.gui.create_button((50, 260, 150, 50), "Reroll", self.set_player_action_reroll)
+        stop_button = self.gui.create_button((220, 260, 150, 50), "Stop", self.set_player_action_stop)
+
+        buttons = [reroll_button, stop_button]
+
+        self.player_action = None
+
+        while self.player_action is None:
+            self.gui.clear_screen()
+            self.gui.display_message("Your Turn", (50, 30))
+            self.gui.display_dice(self.player.get_dice_values(), (50, 80))
+            self.gui.display_message(f"Current Score: {self.player.score}", (50, 180))
+            self.gui.display_message(action_message, (50, 220))
+
+            for button in buttons:
+                button.draw()
+
+            self.gui.update_screen()
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                for button in buttons:
+                    button.handle_event(event)
+            self.gui.clock.tick(60)
+
+        if self.player_action == 'reroll':
             self.player.roll_dice()  # For simplicity, reroll all dice
             if self.player_final_turn:
                 # Player has taken their final turn
                 return True  # Player must stop after this
             else:
                 return False  # Player did not stop
-        elif action == 'stop':
+        elif self.player_action == 'stop':
             return True  # Player chose to stop
+
+    def set_player_action_reroll(self):
+        self.player_action = 'reroll'
+
+    def set_player_action_stop(self):
+        self.player_action = 'stop'
 
     def opponent_turn(self):
         # Returns True if opponent chooses to stop, False otherwise
@@ -155,58 +191,51 @@ class DiceGame:
             return "draw"
 
     def display_scores(self, winner):
-        self.gui.clear_screen()
-        # Display player's dice and score
-        self.gui.display_message("Final Results", (50, 20), font_size=48)
-        self.gui.display_message("Your Dice:", (50, 80))
-        self.gui.display_dice(self.player.get_dice_values(), (50, 120))
-        self.gui.display_message(f"Your Score: {self.player.score}", (50, 200))
+        self.return_to_menu_clicked = False  # Initialize flag
 
-        # Display AI's dice and score
-        self.gui.display_message(f"{self.opponent.name}'s Dice:", (400, 80))
-        self.gui.display_dice(self.opponent.get_dice_values(), (400, 120))
-        self.gui.display_message(f"{self.opponent.name}'s Score: {self.opponent.score}", (400, 200))
+        while not self.return_to_menu_clicked:
+            self.gui.clear_screen()
+            # Display player's dice and score
+            self.gui.display_message("Final Results", (50, 20), font_size=48)
+            self.gui.display_message("Your Dice:", (50, 80))
+            self.gui.display_dice(self.player.get_dice_values(), (50, 120))
+            self.gui.display_message(f"Your Score: {self.player.score}", (50, 200))
 
-        if winner == "player":
-            result_message = "You Win!"
-            tokens_message = f"You won {self.reward_tokens} tokens."
-        elif winner == "opponent":
-            result_message = "You Lose!"
-            tokens_message = f"You lost your entry tokens."
-        else:
-            result_message = "It's a Draw!"
-            refund = math.ceil(self.entry_tokens * 0.8)
-            tokens_message = f"You receive {refund} tokens back."
+            # Display AI's dice and score
+            self.gui.display_message(f"{self.opponent.name}'s Dice:", (600, 80))
+            self.gui.display_dice(self.opponent.get_dice_values(), (600, 120))
+            self.gui.display_message(f"{self.opponent.name}'s Score: {self.opponent.score}", (600, 200))
 
-        self.gui.display_message(result_message, (50, 250), font_size=48)
-        self.gui.display_message(tokens_message, (50, 300))
-        self.gui.display_message("Press 'M' to return to the main menu.", (50, 350))
-        self.gui.update_screen()
-        self.wait_for_main_menu()
+            if winner == "player":
+                result_message = "You Win!"
+                tokens_message = f"You won {self.reward_tokens} tokens."
+            elif winner == "opponent":
+                result_message = "You Lose!"
+                tokens_message = f"You lost your entry tokens."
+            else:
+                result_message = "It's a Draw!"
+                refund = math.ceil(self.entry_tokens * 0.8)
+                tokens_message = f"You receive {refund} tokens back."
 
-    def get_player_action(self):
-        while True:
+            self.gui.display_message(result_message, (50, 250), font_size=48)
+            self.gui.display_message(tokens_message, (50, 300))
+
+            # Create 'Main Menu' button
+            main_menu_button = self.gui.create_button((412, 500, 200, 50), "Main Menu", self.return_to_main_menu)
+            main_menu_button.draw()
+
+            self.gui.update_screen()
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_r:
-                        return 'reroll'
-                    elif event.key == pygame.K_s:
-                        return 'stop'
+                main_menu_button.handle_event(event)
             self.gui.clock.tick(60)
 
-    def wait_for_main_menu(self):
-        while True:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_m:
-                        return
-            self.gui.clock.tick(60)
+    def return_to_main_menu(self):
+        # Set a flag to exit the loop
+        self.return_to_menu_clicked = True
 
     def handle_ai_events(self):
         # Handle events during AI's turn to prevent crashes
