@@ -18,7 +18,7 @@ class GUIManager:
         self.powerup_names = {
             'reroll_single_dice': 'Reroll Single Dice',
             'double_tokens_if_win': 'Double Tokens If Win',
-            'set_dice_to_one': 'Set Dice to ①',
+            'set_dice_to_one': 'Set Dice to 1',
             'set_dice_to_number': 'Set Dice to Desired Number'
         }
         self.load_assets()  # Moved after defining powerup_names

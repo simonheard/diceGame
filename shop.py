@@ -1,15 +1,11 @@
 # shop.py
 
 import random
+import config  # Import config.py
 
 class Shop:
     def __init__(self):
-        self.powerups = {
-            'reroll_single_dice': {'name': 'Reroll Single Dice', 'price_range': (5, 10)},
-            'double_tokens_if_win': {'name': 'Double Tokens If Win', 'price_range': (15, 25)},
-            'set_dice_to_one': {'name': 'Set Dice to 1', 'price_range': (10, 20)},
-            'set_dice_to_number': {'name': 'Set Dice to Desired Number', 'price_range': (20, 30)},
-        }
+        self.powerups = config.POWERUP_SETTINGS
         self.prices = {}
         self.generate_prices()
 

@@ -6,11 +6,12 @@ from dice_game import DiceGame
 import pygame
 import sys
 from shop import Shop
+import config  # Import config.py
 
 class Game:
     def __init__(self):
         self.gui = GUIManager()
-        self.player_tokens = 20  # Starting tokens
+        self.player_tokens = config.INITIAL_TOKENS  # Starting tokens from config
         self.current_opponent = None
         self.running = True  # Game loop control
         self.back_to_menu = False  # Add back_to_menu flag
@@ -22,8 +23,8 @@ class Game:
 
     def start(self):
         while self.running:
-            # Check if player tokens are less than 5 (minimum required to play)
-            if self.player_tokens < 5:
+            # Check if player tokens are less than minimum required to play
+            if self.player_tokens < config.MINIMUM_TOKENS_TO_PLAY:
                 self.display_game_over()
                 # After game over, check if restart was clicked
                 if self.restart_clicked:
@@ -47,7 +48,7 @@ class Game:
         buttons = [play_button, shop_button, quit_button]
 
         while self.running:
-            if self.player_tokens < 5:
+            if self.player_tokens < config.MINIMUM_TOKENS_TO_PLAY:
                 self.display_game_over()
                 # After game over, check if restart was clicked
                 if self.restart_clicked:
@@ -80,11 +81,7 @@ class Game:
         if self.selected_level is None or self.selected_multiplier is None:
             return  # User cancelled selection or did not confirm
 
-        levels = {
-            1: {'base_entry': 5, 'base_reward': 10},
-            2: {'base_entry': 10, 'base_reward': 25},
-            3: {'base_entry': 20, 'base_reward': 60}
-        }
+        levels = config.LEVELS  # Use levels from config
         base_entry_tokens = levels[self.selected_level]['base_entry']
         base_reward_tokens = levels[self.selected_level]['base_reward']
 
@@ -101,7 +98,7 @@ class Game:
                 self.current_opponent,
                 entry_tokens,
                 reward_tokens,
-                debug=debug_mode,
+                debug=config.DEBUG,
                 player=self.player  # Pass the player instance
             )
             self.player_tokens = dice_game.start()
@@ -115,12 +112,8 @@ class Game:
             pygame.time.wait(2000)  # Wait 2 seconds
 
     def select_level_and_multiplier(self):
-        levels = {
-            1: {'base_entry': 5, 'base_reward': 10, 'description': 'Easy'},
-            2: {'base_entry': 10, 'base_reward': 25, 'description': 'Medium'},
-            3: {'base_entry': 20, 'base_reward': 60, 'description': 'Hard'}
-        }
-        multipliers = [1, 2, 5, 10, 20, 30, 50, 100]  # Including 30x multiplier
+        levels = config.LEVELS
+        multipliers = config.MULTIPLIERS  # Including 30x multiplier
 
         self.selected_level = self.last_selected_level
         self.selected_multiplier = self.last_selected_multiplier
@@ -275,11 +268,13 @@ class Game:
             y_position = 130
             for idx, (key, powerup) in enumerate(self.shop.powerups.items()):
                 price = self.shop.prices[key]
+                player_quantity = self.player.inventory.get(key, 0)
+                button_text = f"{powerup['name']} - {price} tokens (You have: {player_quantity})"
                 # Create image buttons for power-ups
                 button = self.gui.create_image_button(
                     (50, y_position + idx * 100, 300, 90),
                     self.gui.load_image(f'images/powerups/{key}.png'),
-                    f"{powerup['name']} - {price} tokens",
+                    button_text,
                     lambda p_key=key: self.purchase_powerup(p_key)
                 )
                 powerup_buttons.append(button)
@@ -288,6 +283,7 @@ class Game:
             back_button = self.gui.create_button((50, 600, 200, 50), "Back", self.back_to_main_menu)
             buttons = powerup_buttons + [back_button]
 
+            # Draw buttons
             for button in buttons:
                 button.draw()
 
@@ -312,13 +308,7 @@ class Game:
         if self.player_tokens >= price:
             self.player_tokens -= price
             self.player.add_powerup(powerup_key)
-            # Display purchase confirmation
-            self.gui.clear_screen()
-            self.gui.display_message("Purchase Successful!", (50, 200), font_size=48, color=(0, 255, 0))
-            self.gui.display_message(f"You purchased {self.shop.powerups[powerup_key]['name']}.", (50, 260))
-            self.gui.display_message(f"Remaining Tokens: {self.player_tokens}", (50, 320))
-            self.gui.update_screen()
-            pygame.time.wait(2000)
+            # Directly update the shop display without showing a confirmation screen
         else:
             # Not enough tokens
             self.gui.clear_screen()
@@ -360,7 +350,7 @@ class Game:
                 game_over = False  # Exit the loop if restart clicked or game is quitting
 
     def restart_game(self):
-        self.player_tokens = 20  # Reset tokens to starting amount
+        self.player_tokens = config.INITIAL_TOKENS  # Reset tokens to starting amount
         self.restart_clicked = True  # Set flag to exit the loop
         # Reset last selected level and multiplier
         self.last_selected_level = None

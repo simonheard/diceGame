@@ -2,10 +2,11 @@
 
 import pygame
 import sys
-import math  # Import math module for rounding up
+import math
 import random
 from player import Player, AIPlayer
 from score_calculator import ScoreCalculator
+import config  # Import config.py
 
 class DiceGame:
     def __init__(self, gui, player_tokens, opponent, entry_tokens, reward_tokens, debug=False, player=None):
@@ -173,7 +174,7 @@ class DiceGame:
                 self.player.calculate_score(self.score_calculator)
         elif powerup_key == 'set_dice_to_one':
             # Ask the player which dice to set to 1
-            dice_index = self.gui.select_dice("Select a dice to set to ①:", self.player.get_dice_values())
+            dice_index = self.gui.select_dice("Select a dice to set to 1:", self.player.get_dice_values())
             if dice_index is not None:
                 self.player.use_powerup(powerup_key, dice_index)
                 # Recalculate the score after using the power-up
