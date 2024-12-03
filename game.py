@@ -1,3 +1,5 @@
+# game.py
+
 from gui_manager import GUIManager
 from player import Player, AIPlayer
 from dice_game import DiceGame
@@ -9,7 +11,7 @@ import config  # Import config.py
 class Game:
     def __init__(self):
         self.gui = GUIManager()
-        self.player_tokens = 20  # Starting tokens
+        self.player_tokens = config.INITIAL_TOKENS  # Starting tokens
         self.current_opponent = None
         self.running = True  # Game loop control
         self.back_to_menu = False
@@ -38,10 +40,11 @@ class Game:
         # Define buttons
         play_button = self.gui.create_button((412, 200, 200, 50), "Play Game", self.choose_opponent)
         shop_button = self.gui.create_button((412, 300, 200, 50), "Shop", self.open_shop)
-        quit_button = self.gui.create_button((412, 400, 200, 50), "Quit", self.quit_game)
+        rules_button = self.gui.create_button((412, 400, 200, 50), "Game Rules", self.show_rules_and_credits)
+        quit_button = self.gui.create_button((412, 500, 200, 50), "Quit", self.quit_game)
 
-        buttons = [play_button, shop_button, quit_button]
-
+        buttons = [play_button, shop_button, rules_button, quit_button]
+        
         while self.running:
             if self.player_tokens < config.MINIMUM_TOKENS_TO_PLAY:
                 self.display_game_over()
@@ -67,6 +70,107 @@ class Game:
                 for button in buttons:
                     button.handle_event(event)
             self.gui.clock.tick(60)
+            
+    def show_rules_and_credits(self):
+        # Navigate to the rules and credits page
+        self.display_rules_and_credits()
+
+    def display_rules_and_credits(self):
+        back_button = self.gui.create_button((412, 650, 200, 50), "Back", self.exit_rules_and_credits)
+
+        self.back_to_menu = False  # Ensure the flag is reset
+        running = True
+        while running:
+            self.gui.clear_screen()
+            
+            game_rule_section_offsets = [50, 30]
+            credit_section_offsets = [500, 30]
+            line_height = 50
+            small_font_line_height = 30
+
+            # Game Rules Section
+            self.gui.display_message("Game Rules", 
+                                    (game_rule_section_offsets[0], game_rule_section_offsets[1]), 
+                                    font_size=48)
+            self.gui.display_message("1. Roll dice to score points.", 
+                                    (game_rule_section_offsets[0], game_rule_section_offsets[1] + line_height), 
+                                    font_size=36)
+            self.gui.display_message("2. High scores are earned through:", 
+                                    (game_rule_section_offsets[0], game_rule_section_offsets[1] + 2 * line_height), 
+                                    font_size=36)
+            self.gui.display_message("- 1-2-3-4-5 straight: 130 points", 
+                                    (game_rule_section_offsets[0] + 20, game_rule_section_offsets[1] + 3 * line_height), 
+                                    font_size=30)
+            self.gui.display_message("- 2-3-4-5-6 straight: 110 points", 
+                                    (game_rule_section_offsets[0] + 20, game_rule_section_offsets[1] + 3 * line_height + small_font_line_height), 
+                                    font_size=30)
+            self.gui.display_message("- Dice face 1 acts as a wildcard ", 
+                                    (game_rule_section_offsets[0] + 20, game_rule_section_offsets[1] + 3 * line_height + 2 * small_font_line_height), 
+                                    font_size=30)
+            self.gui.display_message("  when not used in a straight.", 
+                                    (game_rule_section_offsets[0] + 50, game_rule_section_offsets[1] + 3 * line_height + 3 * small_font_line_height), 
+                                    font_size=30)
+            self.gui.display_message("- Five of a kind: 100 + dice sum", 
+                                    (game_rule_section_offsets[0] + 20, game_rule_section_offsets[1] + 3 * line_height + 4 * small_font_line_height), 
+                                    font_size=30)
+            self.gui.display_message("- Full House (3+2 same): 70 + dice sum", 
+                                    (game_rule_section_offsets[0] + 20, game_rule_section_offsets[1] + 3 * line_height + 5 * small_font_line_height), 
+                                    font_size=30)
+            self.gui.display_message("- Four of a kind: 70 + dice sum", 
+                                    (game_rule_section_offsets[0] + 20, game_rule_section_offsets[1] + 3 * line_height + 6 * small_font_line_height), 
+                                    font_size=30)
+            self.gui.display_message("- Three of a kind or Two Pairs:", 
+                                    (game_rule_section_offsets[0] + 20, game_rule_section_offsets[1] + 3 * line_height + 7 * small_font_line_height), 
+                                    font_size=30)
+            self.gui.display_message("  40 + dice sum", 
+                                    (game_rule_section_offsets[0] + 50, game_rule_section_offsets[1] + 3 * line_height + 8 * small_font_line_height), 
+                                    font_size=30)
+            self.gui.display_message("- One Pair: 10 + dice sum", 
+                                    (game_rule_section_offsets[0] + 20, game_rule_section_offsets[1] + 3 * line_height + 9 * small_font_line_height), 
+                                    font_size=30)
+            self.gui.display_message("3. Use power-ups strategically to gain advantage.", 
+                                    (game_rule_section_offsets[0], game_rule_section_offsets[1] + 4 * line_height + 9 * small_font_line_height), 
+                                    font_size=36)
+            self.gui.display_message("4. Win tokens by defeating AI opponents.",
+                                    (game_rule_section_offsets[0], game_rule_section_offsets[1] + 5 * line_height + 9 * small_font_line_height),
+                                    font_size=36)
+            self.gui.display_message("5. Get tokens as much as you can to keep playing!",
+                                    (game_rule_section_offsets[0], game_rule_section_offsets[1] + 6 * line_height + 9 * small_font_line_height),
+                                    font_size=36)
+
+            # Credits Section
+            self.gui.display_message("Credits", 
+                                    (credit_section_offsets[0], credit_section_offsets[1]), 
+                                    font_size=48)
+            self.gui.display_message("Game developed by: Hede Wang", 
+                                    (credit_section_offsets[0], credit_section_offsets[1] + line_height), 
+                                    font_size=36)
+            self.gui.display_message("BGM: Created with Suno AI", 
+                                    (credit_section_offsets[0], credit_section_offsets[1] + 2 * line_height), 
+                                    font_size=36)
+            self.gui.display_message("Sound effects: Hede Wang / Pixabay", 
+                                    (credit_section_offsets[0], credit_section_offsets[1] + 3 * line_height), 
+                                    font_size=36)
+
+
+
+            back_button.draw()
+            self.gui.update_screen()
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                back_button.handle_event(event)
+
+            # Move this condition inside the while loop
+            if self.back_to_menu:
+                running = False  # Exit the rules and credits page
+
+            self.gui.clock.tick(60)
+
+    def exit_rules_and_credits(self):
+        self.back_to_menu = True
 
     def choose_opponent(self):
         self.select_level_and_multiplier()
@@ -198,6 +302,9 @@ class Game:
                     sys.exit()
                 for button in buttons:
                     button.handle_event(event)
+
+            if self.back_to_menu:
+                return  # Return to main menu
 
             self.gui.clock.tick(60)
 
