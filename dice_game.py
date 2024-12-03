@@ -1,15 +1,16 @@
 # dice_game.py
 
-from player import Player, AIPlayer
-from score_calculator import ScoreCalculator
 import pygame
 import sys
 import math  # Import math module for rounding up
+import random
+from player import Player, AIPlayer
+from score_calculator import ScoreCalculator
 
 class DiceGame:
-    def __init__(self, gui, player_tokens, opponent, entry_tokens, reward_tokens, debug=False):
+    def __init__(self, gui, player_tokens, opponent, entry_tokens, reward_tokens, debug=False, player=None):
         self.gui = gui
-        self.player = Player("Player")
+        self.player = player if player else Player("Player")  # Use the player from game.py
         self.opponent = opponent
         self.score_calculator = ScoreCalculator()
         self.player_tokens = player_tokens
@@ -22,6 +23,7 @@ class DiceGame:
         self.debug = debug  # Add debug flag
         self.player_final_turn = False  # Flag to indicate if player is on final turn
         self.return_to_menu_clicked = False  # Initialize flag
+        self.double_reward = False  # Flag for double tokens power-up
 
     def start(self):
         # Initialize both players' dice
@@ -66,6 +68,8 @@ class DiceGame:
         self.display_scores(winner)
         # Update player tokens based on the result
         if winner == "player":
+            if self.double_reward:
+                self.reward_tokens *= 2  # Double the reward
             self.player_tokens += self.reward_tokens
         elif winner == "draw":
             # Return 80% of the entry tokens, rounded up
@@ -94,9 +98,27 @@ class DiceGame:
 
         buttons = [reroll_button, stop_button]
 
-        self.player_action = None
+        # Create power-up image buttons if the player has any
+        powerup_buttons = []
+        y_position = 330
+        for idx, (key, quantity) in enumerate(self.player.inventory.items()):
+            if quantity > 0:
+                powerup_name = self.gui.powerup_names[key]
+                powerup_image = self.gui.assets['powerups'][key]
+                button = self.gui.create_image_button(
+                    (50, y_position + idx * 100, 300, 90),
+                    powerup_image,
+                    f"{powerup_name} ({quantity})",
+                    lambda p_key=key: self.set_player_action_powerup(p_key)
+                )
+                powerup_buttons.append(button)
 
-        while self.player_action is None:
+        buttons.extend(powerup_buttons)
+
+        self.player_action = None
+        self.selected_powerup = None
+
+        while self.player_action is None and self.selected_powerup is None:
             self.gui.clear_screen()
             self.display_player_info()
             self.display_ai_status()
@@ -129,12 +151,50 @@ class DiceGame:
                 return False  # Player did not stop
         elif self.player_action == 'stop':
             return True  # Player chose to stop
+        elif self.selected_powerup:
+            # Handle using the selected power-up
+            self.use_powerup(self.selected_powerup)
+            return False  # Continue the turn
 
     def set_player_action_reroll(self):
         self.player_action = 'reroll'
 
     def set_player_action_stop(self):
         self.player_action = 'stop'
+
+    def set_player_action_powerup(self, powerup_key):
+        self.selected_powerup = powerup_key
+
+    def use_powerup(self, powerup_key):
+        if powerup_key == 'reroll_single_dice':
+            # Ask the player which dice to reroll
+            dice_index = self.gui.select_dice("Select a dice to reroll:", self.player.get_dice_values())
+            if dice_index is not None:
+                self.player.use_powerup(powerup_key, dice_index)
+                # Recalculate the score after using the power-up
+                self.player.calculate_score(self.score_calculator)
+        elif powerup_key == 'set_dice_to_one':
+            # Ask the player which dice to set to 1
+            dice_index = self.gui.select_dice("Select a dice to set to ①:", self.player.get_dice_values())
+            if dice_index is not None:
+                self.player.use_powerup(powerup_key, dice_index)
+                # Recalculate the score after using the power-up
+                self.player.calculate_score(self.score_calculator)
+        elif powerup_key == 'set_dice_to_number':
+            # Ask the player which dice and what number
+            dice_index = self.gui.select_dice("Select a dice to set to desired number:", self.player.get_dice_values())
+            desired_number = self.gui.select_number("Select the desired number (1-6):")
+            if dice_index is not None and desired_number is not None:
+                self.player.use_powerup(powerup_key, dice_index, desired_number)
+                # Recalculate the score after using the power-up
+                self.player.calculate_score(self.score_calculator)
+        elif powerup_key == 'double_tokens_if_win':
+            # Use the power-up
+            self.player.use_powerup(powerup_key)
+            self.double_reward = True  # Flag to double the reward if the player wins
+
+        # Reset selected power-up
+        self.selected_powerup = None
 
     def opponent_turn(self):
         # Returns True if opponent chooses to stop, False otherwise
@@ -201,7 +261,10 @@ class DiceGame:
 
             if winner == "player":
                 result_message = "You Win!"
-                tokens_message = f"You won {self.reward_tokens} tokens."
+                if self.double_reward:
+                    tokens_message = f"You won {self.reward_tokens} tokens (doubled)!"
+                else:
+                    tokens_message = f"You won {self.reward_tokens} tokens."
             elif winner == "opponent":
                 result_message = "You Lose!"
                 tokens_message = f"You lost your entry tokens."

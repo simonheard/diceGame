@@ -5,6 +5,7 @@ from player import Player, AIPlayer
 from dice_game import DiceGame
 import pygame
 import sys
+from shop import Shop
 
 class Game:
     def __init__(self):
@@ -16,6 +17,8 @@ class Game:
         self.restart_clicked = False  # Initialize restart flag
         self.last_selected_level = None  # Remember last selected level
         self.last_selected_multiplier = None  # Remember last selected multiplier
+        self.shop = Shop()  # Initialize the shop
+        self.player = Player("Player")  # Create a player instance
 
     def start(self):
         while self.running:
@@ -72,6 +75,7 @@ class Game:
     def choose_opponent(self):
         self.select_level_and_multiplier()
         if self.back_to_menu:
+            self.back_to_menu = False  # Reset the flag here
             return  # Return to main menu
         if self.selected_level is None or self.selected_multiplier is None:
             return  # User cancelled selection or did not confirm
@@ -91,8 +95,18 @@ class Game:
             self.player_tokens -= entry_tokens
             self.current_opponent = AIPlayer(f"Level {self.selected_level} AI", self.selected_level)
             debug_mode = False  # Set to True to enable debug mode
-            dice_game = DiceGame(self.gui, self.player_tokens, self.current_opponent, entry_tokens, reward_tokens, debug=debug_mode)
+            dice_game = DiceGame(
+                self.gui,
+                self.player_tokens,
+                self.current_opponent,
+                entry_tokens,
+                reward_tokens,
+                debug=debug_mode,
+                player=self.player  # Pass the player instance
+            )
             self.player_tokens = dice_game.start()
+            # Generate new shop prices after the game
+            self.shop.generate_prices()
         else:
             # Not enough tokens, display a message
             self.gui.clear_screen()
@@ -246,24 +260,71 @@ class Game:
         self.back_to_menu = True  # Indicate we are returning to main menu
 
     def open_shop(self):
-        # Placeholder for shop implementation
-        self.gui.clear_screen()
-        self.gui.display_message("Shop is under construction!", (200, 250), font_size=48, color=(255, 255, 0))
-        self.gui.display_message("Press any key to return to the main menu.", (180, 320), font_size=36)
-        self.gui.update_screen()
-        self.wait_for_keypress()
+        # Reset back_to_menu flag at the start
+        self.back_to_menu = False
 
-    def wait_for_keypress(self):
-        waiting = True
-        while waiting:
+        shopping = True
+
+        while shopping:
+            self.gui.clear_screen()
+            self.gui.display_message("Shop", (50, 30), font_size=48)
+            self.gui.display_message(f"Your Tokens: {self.player_tokens}", (50, 80))
+
+            # Display power-ups and prices
+            powerup_buttons = []
+            y_position = 130
+            for idx, (key, powerup) in enumerate(self.shop.powerups.items()):
+                price = self.shop.prices[key]
+                # Create image buttons for power-ups
+                button = self.gui.create_image_button(
+                    (50, y_position + idx * 100, 300, 90),
+                    self.gui.load_image(f'images/powerups/{key}.png'),
+                    f"{powerup['name']} - {price} tokens",
+                    lambda p_key=key: self.purchase_powerup(p_key)
+                )
+                powerup_buttons.append(button)
+
+            # Back button
+            back_button = self.gui.create_button((50, 600, 200, 50), "Back", self.back_to_main_menu)
+            buttons = powerup_buttons + [back_button]
+
+            for button in buttons:
+                button.draw()
+
+            self.gui.update_screen()
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
                     pygame.quit()
                     sys.exit()
-                elif event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
-                    waiting = False
+                for button in buttons:
+                    button.handle_event(event)
+
+            if self.back_to_menu:
+                self.back_to_menu = False  # Reset the flag
+                shopping = False  # Exit the shop
+
             self.gui.clock.tick(60)
+
+    def purchase_powerup(self, powerup_key):
+        price = self.shop.prices[powerup_key]
+        if self.player_tokens >= price:
+            self.player_tokens -= price
+            self.player.add_powerup(powerup_key)
+            # Display purchase confirmation
+            self.gui.clear_screen()
+            self.gui.display_message("Purchase Successful!", (50, 200), font_size=48, color=(0, 255, 0))
+            self.gui.display_message(f"You purchased {self.shop.powerups[powerup_key]['name']}.", (50, 260))
+            self.gui.display_message(f"Remaining Tokens: {self.player_tokens}", (50, 320))
+            self.gui.update_screen()
+            pygame.time.wait(2000)
+        else:
+            # Not enough tokens
+            self.gui.clear_screen()
+            self.gui.display_message("Not enough tokens!", (50, 200), font_size=48, color=(255, 0, 0))
+            self.gui.update_screen()
+            pygame.time.wait(2000)
 
     def quit_game(self):
         self.running = False
@@ -278,9 +339,7 @@ class Game:
         restart_button = self.gui.create_button((412, 400, 200, 50), "Restart", self.restart_game)
         quit_button = self.gui.create_button((412, 500, 200, 50), "Quit", self.quit_game)
         buttons = [restart_button, quit_button]
-        self.gui.update_screen()
 
-        self.restart_clicked = False  # Initialize flag
         game_over = True
         while game_over:
             self.gui.clear_screen()
@@ -306,3 +365,10 @@ class Game:
         # Reset last selected level and multiplier
         self.last_selected_level = None
         self.last_selected_multiplier = None
+        # Reset player's inventory
+        self.player.inventory = {
+            'reroll_single_dice': 0,
+            'double_tokens_if_win': 0,
+            'set_dice_to_one': 0,
+            'set_dice_to_number': 0
+        }

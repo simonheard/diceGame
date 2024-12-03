@@ -36,5 +36,8 @@ class DiceSet:
         for index in indices:
             self.dice[index].roll(probabilities)
 
+    def set_dice_value(self, index, value):
+        self.dice[index].set_face_value(value)
+
     def get_values(self):
         return [die.get_face_value() for die in self.dice]
