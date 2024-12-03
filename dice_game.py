@@ -23,7 +23,7 @@ class DiceGame:
         self.debug = debug  # Add debug flag
         self.player_final_turn = False  # Flag to indicate if player is on final turn
         self.return_to_menu_clicked = False  # Initialize flag
-        self.double_reward = False  # Flag for double tokens power-up
+        self.double_reward_multiplier = 1  # Multiplier for double tokens power-up
 
     def start(self):
         # Initialize both players' dice
@@ -68,9 +68,8 @@ class DiceGame:
         self.display_scores(winner)
         # Update player tokens based on the result
         if winner == "player":
-            if self.double_reward:
-                self.reward_tokens *= 2  # Double the reward
-            self.player_tokens += self.reward_tokens
+            total_reward = self.reward_tokens * self.double_reward_multiplier
+            self.player_tokens += total_reward
         elif winner == "draw":
             # Return 80% of the entry tokens, rounded up
             refund = math.ceil(self.entry_tokens * 0.8)
@@ -82,79 +81,77 @@ class DiceGame:
     def player_turn(self):
         # Returns True if player chooses to stop, False otherwise
         self.player.calculate_score(self.score_calculator)
-        self.gui.clear_screen()
-        self.display_player_info()
-        self.display_ai_status()
-
-        # Create buttons for actions
-        if self.player_final_turn:
-            action_message = "Final Turn! Choose an action."
-        else:
-            action_message = "Choose an action."
-        self.gui.display_message(action_message, (50, 220))
-
-        reroll_button = self.gui.create_button((50, 260, 150, 50), "Reroll", self.set_player_action_reroll)
-        stop_button = self.gui.create_button((220, 260, 150, 50), "Stop", self.set_player_action_stop)
-
-        buttons = [reroll_button, stop_button]
-
-        # Create power-up image buttons if the player has any
-        powerup_buttons = []
-        y_position = 330
-        for idx, (key, quantity) in enumerate(self.player.inventory.items()):
-            if quantity > 0:
-                powerup_name = self.gui.powerup_names[key]
-                powerup_image = self.gui.assets['powerups'][key]
-                button = self.gui.create_image_button(
-                    (50, y_position + idx * 100, 300, 90),
-                    powerup_image,
-                    f"{powerup_name} ({quantity})",
-                    lambda p_key=key: self.set_player_action_powerup(p_key)
-                )
-                powerup_buttons.append(button)
-
-        buttons.extend(powerup_buttons)
-
         self.player_action = None
         self.selected_powerup = None
 
-        while self.player_action is None and self.selected_powerup is None:
+        while True:
             self.gui.clear_screen()
             self.display_player_info()
             self.display_ai_status()
+
+            if self.player_final_turn:
+                action_message = "Final Turn! Choose an action."
+            else:
+                action_message = "Choose an action."
             self.gui.display_message(action_message, (50, 220))
 
+            # Create action buttons
+            reroll_button = self.gui.create_button((50, 260, 150, 50), "Reroll", self.set_player_action_reroll)
+            stop_button = self.gui.create_button((220, 260, 150, 50), "Stop", self.set_player_action_stop)
+
+            buttons = [reroll_button, stop_button]
+
+            # Create power-up buttons directly on the main action screen
+            powerup_buttons = []
+            y_position = 330
+            for idx, (key, quantity) in enumerate(self.player.inventory.items()):
+                if quantity > 0:
+                    powerup_name = self.gui.powerup_names[key]
+                    powerup_image = self.gui.assets['powerups'][key]
+                    button = self.gui.create_image_button(
+                        (50, y_position + idx * 100, 300, 90),
+                        powerup_image,
+                        f"{powerup_name} ({quantity})",
+                        lambda p_key=key: self.use_powerup(p_key)
+                    )
+                    powerup_buttons.append(button)
+
+            buttons.extend(powerup_buttons)
+
+            # Draw all buttons
             for button in buttons:
                 button.draw()
 
             self.gui.update_screen()
 
+            # Event handling
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
                 for button in buttons:
                     button.handle_event(event)
-            self.gui.clock.tick(60)
 
-        if self.player_action == 'reroll':
-            # Animate dice reroll
-            self.gui.animate_dice_reroll(num_dice=5, position=(50, 70))
-            # Perform the actual reroll
-            self.player.roll_dice()
-            # Recalculate the score after reroll
-            self.player.calculate_score(self.score_calculator)
-            if self.player_final_turn:
-                # Player has taken their final turn
-                return True  # Player must stop after this
-            else:
-                return False  # Player did not stop
-        elif self.player_action == 'stop':
-            return True  # Player chose to stop
-        elif self.selected_powerup:
-            # Handle using the selected power-up
-            self.use_powerup(self.selected_powerup)
-            return False  # Continue the turn
+            # Handle player action
+            if self.player_action == 'reroll':
+                # Animate dice reroll
+                self.gui.animate_dice_reroll(num_dice=5, position=(50, 70))
+                # Perform the actual reroll
+                self.player.roll_dice()
+                # Recalculate the score after reroll
+                self.player.calculate_score(self.score_calculator)
+                if self.player_final_turn:
+                    # Player has taken their final turn
+                    return True  # Player must stop after this
+                else:
+                    return False  # Player did not stop
+            elif self.player_action == 'stop':
+                return True  # Player chose to stop
+
+            # Reset player_action for next iteration
+            self.player_action = None
+
+            self.gui.clock.tick(60)
 
     def set_player_action_reroll(self):
         self.player_action = 'reroll'
@@ -162,10 +159,11 @@ class DiceGame:
     def set_player_action_stop(self):
         self.player_action = 'stop'
 
-    def set_player_action_powerup(self, powerup_key):
-        self.selected_powerup = powerup_key
-
     def use_powerup(self, powerup_key):
+        if self.player.inventory[powerup_key] <= 0:
+            # No power-ups of this type left
+            return
+
         if powerup_key == 'reroll_single_dice':
             # Ask the player which dice to reroll
             dice_index = self.gui.select_dice("Select a dice to reroll:", self.player.get_dice_values())
@@ -191,10 +189,7 @@ class DiceGame:
         elif powerup_key == 'double_tokens_if_win':
             # Use the power-up
             self.player.use_powerup(powerup_key)
-            self.double_reward = True  # Flag to double the reward if the player wins
-
-        # Reset selected power-up
-        self.selected_powerup = None
+            self.double_reward_multiplier *= 2  # Multiply the reward multiplier
 
     def opponent_turn(self):
         # Returns True if opponent chooses to stop, False otherwise
@@ -261,10 +256,8 @@ class DiceGame:
 
             if winner == "player":
                 result_message = "You Win!"
-                if self.double_reward:
-                    tokens_message = f"You won {self.reward_tokens} tokens (doubled)!"
-                else:
-                    tokens_message = f"You won {self.reward_tokens} tokens."
+                total_reward = self.reward_tokens * self.double_reward_multiplier
+                tokens_message = f"You won {total_reward} tokens!"
             elif winner == "opponent":
                 result_message = "You Lose!"
                 tokens_message = f"You lost your entry tokens."
