@@ -2,6 +2,7 @@
 
 import pygame
 import sys
+import random  # Added import for random module
 
 class GUIManager:
     def __init__(self):
@@ -80,3 +81,25 @@ class GUIManager:
 
     def create_button(self, rect, text, callback, font_size=36):
         return self.Button(self, rect, text, callback, font_size)
+
+    # New method for dice reroll animation
+    def animate_dice_reroll(self, num_dice, position, duration=500, fps=30):
+        """
+        Animate the dice reroll by rapidly changing dice faces.
+
+        Args:
+            num_dice (int): Number of dice to animate.
+            position (tuple): Starting (x, y) position to display the dice.
+            duration (int): Total duration of the animation in milliseconds.
+            fps (int): Frames per second for the animation.
+        """
+        frames = int(duration / (1000 / fps))
+        clock = pygame.time.Clock()
+
+        for _ in range(frames):
+            self.clear_screen()
+            # Randomize dice values for animation
+            dice_values = [random.randint(1, 6) for _ in range(num_dice)]
+            self.display_dice(dice_values, position)
+            self.update_screen()
+            clock.tick(fps)

@@ -14,6 +14,8 @@ class Game:
         self.running = True  # Game loop control
         self.back_to_menu = False  # Add back_to_menu flag
         self.restart_clicked = False  # Initialize restart flag
+        self.last_selected_level = None  # Remember last selected level
+        self.last_selected_multiplier = None  # Remember last selected multiplier
 
     def start(self):
         while self.running:
@@ -26,7 +28,7 @@ class Game:
                     self.restart_clicked = False  # Reset the flag
                     continue  # Continue the game loop
                 else:
-                    # Not restarting, exit the game
+                    # Not restarting, exit the game loop
                     break
             self.main_menu()
 
@@ -100,14 +102,14 @@ class Game:
 
     def select_level_and_multiplier(self):
         levels = {
-            1: {'base_entry': 5, 'base_reward': 10},
-            2: {'base_entry': 10, 'base_reward': 25},
-            3: {'base_entry': 20, 'base_reward': 60}
+            1: {'base_entry': 5, 'base_reward': 10, 'description': 'Easy'},
+            2: {'base_entry': 10, 'base_reward': 25, 'description': 'Medium'},
+            3: {'base_entry': 20, 'base_reward': 60, 'description': 'Hard'}
         }
         multipliers = [1, 2, 5, 10, 20, 30, 50, 100]  # Including 30x multiplier
 
-        self.selected_level = None
-        self.selected_multiplier = None
+        self.selected_level = self.last_selected_level
+        self.selected_multiplier = self.last_selected_multiplier
         self.confirm_clicked = False
         self.back_to_menu = False  # Reset back_to_menu flag
 
@@ -157,6 +159,9 @@ class Game:
             if self.selected_level:
                 idx = list(levels.keys()).index(self.selected_level)
                 pygame.draw.rect(self.gui.screen, (0, 255, 0), level_buttons[idx].rect, 3)  # Green border
+                # Display level description
+                level_desc = levels[self.selected_level]['description']
+                self.gui.display_message(f"Difficulty: {level_desc}", (100, 300), font_size=24)
 
             if self.selected_multiplier:
                 idx = multipliers.index(self.selected_multiplier)
@@ -199,6 +204,10 @@ class Game:
             return  # Return to main menu
 
         if self.selected_level and self.selected_multiplier:
+            # Remember the player's selection
+            self.last_selected_level = self.selected_level
+            self.last_selected_multiplier = self.selected_multiplier
+
             base_entry_tokens = levels[self.selected_level]['base_entry']
             required_tokens = base_entry_tokens * self.selected_multiplier
             if self.player_tokens >= required_tokens:
@@ -294,3 +303,6 @@ class Game:
     def restart_game(self):
         self.player_tokens = 20  # Reset tokens to starting amount
         self.restart_clicked = True  # Set flag to exit the loop
+        # Reset last selected level and multiplier
+        self.last_selected_level = None
+        self.last_selected_multiplier = None

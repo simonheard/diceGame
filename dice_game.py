@@ -32,43 +32,33 @@ class DiceGame:
             if self.current_turn == "player":
                 if not self.player_stopped:
                     self.player_stopped = self.player_turn()
-                    if self.player_stopped:
-                        # Player has stopped, AI gets one final turn
-                        self.current_turn = "opponent"
-                    else:
-                        # Switch to opponent's turn
-                        self.current_turn = "opponent"
+                    self.current_turn = "opponent"
+                elif self.player_final_turn:
+                    # Player gets final turn after AI stops
+                    self.player_final_turn = False  # Reset the flag
+                    self.player_stopped = self.player_turn()
+                    self.game_over = True  # Game ends after player's final turn
                 else:
-                    # Player has stopped, check if AI has also stopped
-                    if self.opponent_stopped:
-                        self.game_over = True
-                    else:
-                        # AI gets one more turn after player stops
-                        self.current_turn = "opponent"
+                    self.game_over = True  # Both players have stopped
             elif self.current_turn == "opponent":
                 if not self.opponent_stopped:
                     self.opponent_stopped = self.opponent_turn()
                     if self.opponent_stopped:
-                        # Notify player that AI has stopped
                         self.notify_ai_stopped()
-                        if self.player_stopped:
-                            self.game_over = True
-                        else:
+                        if not self.player_stopped:
                             # Player gets one final turn
                             self.player_final_turn = True
                             self.current_turn = "player"
-                    else:
-                        if self.player_stopped:
-                            # AI has taken its final turn after player stopped
-                            self.game_over = True
                         else:
-                            # Switch to player's turn
-                            self.current_turn = "player"
+                            self.game_over = True
+                    else:
+                        self.current_turn = "player"
                 else:
                     if self.player_stopped:
                         self.game_over = True
                     else:
-                        # Switch to player's turn
+                        # Player gets one final turn
+                        self.player_final_turn = True
                         self.current_turn = "player"
 
         # After the loop ends, compare scores
@@ -89,9 +79,8 @@ class DiceGame:
         # Returns True if player chooses to stop, False otherwise
         self.player.calculate_score(self.score_calculator)
         self.gui.clear_screen()
-        self.gui.display_message("Your Turn", (50, 30))
-        self.gui.display_dice(self.player.get_dice_values(), (50, 80))
-        self.gui.display_message(f"Current Score: {self.player.score}", (50, 180))
+        self.display_player_info()
+        self.display_ai_status()
 
         # Create buttons for actions
         if self.player_final_turn:
@@ -109,9 +98,8 @@ class DiceGame:
 
         while self.player_action is None:
             self.gui.clear_screen()
-            self.gui.display_message("Your Turn", (50, 30))
-            self.gui.display_dice(self.player.get_dice_values(), (50, 80))
-            self.gui.display_message(f"Current Score: {self.player.score}", (50, 180))
+            self.display_player_info()
+            self.display_ai_status()
             self.gui.display_message(action_message, (50, 220))
 
             for button in buttons:
@@ -128,7 +116,12 @@ class DiceGame:
             self.gui.clock.tick(60)
 
         if self.player_action == 'reroll':
-            self.player.roll_dice()  # For simplicity, reroll all dice
+            # Animate dice reroll
+            self.gui.animate_dice_reroll(num_dice=5, position=(50, 70))
+            # Perform the actual reroll
+            self.player.roll_dice()
+            # Recalculate the score after reroll
+            self.player.calculate_score(self.score_calculator)
             if self.player_final_turn:
                 # Player has taken their final turn
                 return True  # Player must stop after this
@@ -147,18 +140,11 @@ class DiceGame:
         # Returns True if opponent chooses to stop, False otherwise
         self.opponent.calculate_score(self.score_calculator)
         self.gui.clear_screen()
-        self.gui.display_message(f"{self.opponent.name}'s Turn", (50, 30))
-
-        if self.debug:
-            # In debug mode, display AI's dice and score
-            self.gui.display_dice(self.opponent.get_dice_values(), (50, 80))
-            self.gui.display_message(f"Current Score: {self.opponent.score}", (50, 180))
-        else:
-            # Hide AI's dice and score
-            self.gui.display_message("AI is thinking...", (50, 80))
+        self.display_player_info()  # Always display player's info
+        self.display_ai_status()    # Display AI status
 
         self.gui.update_screen()
-        pygame.time.wait(1000)  # Wait 1 second to simulate thinking
+        pygame.time.wait(500)  # Wait 0.5 seconds to simulate thinking
 
         # Handle events during AI's turn to prevent crashes
         self.handle_ai_events()
@@ -167,18 +153,23 @@ class DiceGame:
         if self.opponent.has_stopped:
             return True  # Opponent chose to stop
         else:
+            # Animate dice reroll for AI (optional)
+            if not self.debug:
+                self.gui.animate_dice_reroll(num_dice=5, position=(600, 70))
+            # Perform the actual reroll
+            self.opponent.roll_dice()
+            self.opponent.calculate_score(self.score_calculator)
             if self.player_stopped:
-                # If player has stopped, AI gets only one more reroll
-                self.opponent.roll_dice()
-                self.opponent.calculate_score(self.score_calculator)
-                return True  # AI must stop after this reroll
+                # If player has stopped, AI must stop after this reroll
+                return True
             else:
-                self.opponent.roll_dice()
                 return False  # Opponent did not stop
 
     def notify_ai_stopped(self):
         self.gui.clear_screen()
-        self.gui.display_message(f"{self.opponent.name} has stopped.", (50, 200))
+        self.display_player_info()  # Always display player's info
+        self.display_ai_status()
+        self.gui.display_message(f"{self.opponent.name} has stopped.", (600, 300))
         self.gui.update_screen()
         pygame.time.wait(2000)  # Wait 2 seconds
 
@@ -195,13 +186,15 @@ class DiceGame:
 
         while not self.return_to_menu_clicked:
             self.gui.clear_screen()
-            # Display player's dice and score
+            # Display "Final Results" at the top
             self.gui.display_message("Final Results", (50, 20), font_size=48)
+
+            # Display player's dice and score
             self.gui.display_message("Your Dice:", (50, 80))
             self.gui.display_dice(self.player.get_dice_values(), (50, 120))
             self.gui.display_message(f"Your Score: {self.player.score}", (50, 200))
 
-            # Display AI's dice and score
+            # Display AI's dice and score (always show in final results)
             self.gui.display_message(f"{self.opponent.name}'s Dice:", (600, 80))
             self.gui.display_dice(self.opponent.get_dice_values(), (600, 120))
             self.gui.display_message(f"{self.opponent.name}'s Score: {self.opponent.score}", (600, 200))
@@ -217,6 +210,7 @@ class DiceGame:
                 refund = math.ceil(self.entry_tokens * 0.8)
                 tokens_message = f"You receive {refund} tokens back."
 
+            # Move the result messages down to allow enough space above
             self.gui.display_message(result_message, (50, 250), font_size=48)
             self.gui.display_message(tokens_message, (50, 300))
 
@@ -244,3 +238,21 @@ class DiceGame:
                 pygame.quit()
                 sys.exit()
             # Ignore other events during AI's turn
+
+    def display_player_info(self):
+        """Helper method to display player's dice and score."""
+        self.gui.display_message("Your Dice:", (50, 30))
+        self.gui.display_dice(self.player.get_dice_values(), (50, 70))
+        self.gui.display_message(f"Current Score: {self.player.score}", (50, 160))
+
+    def display_ai_status(self):
+        """Helper method to display AI's status."""
+        self.gui.display_message(f"{self.opponent.name}'s Status:", (600, 30))
+        if self.debug:
+            # Display AI's dice and score in debug mode
+            self.gui.display_dice(self.opponent.get_dice_values(), (600, 70))
+            self.gui.display_message(f"AI Score: {self.opponent.score}", (600, 160))
+        else:
+            # Hide AI's dice and scores during gameplay
+            status = "AI has stopped." if self.opponent_stopped else "AI is playing."
+            self.gui.display_message(status, (600, 70))
