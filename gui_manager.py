@@ -1,53 +1,64 @@
-# gui_manager.py
-
-import pygame
+import os
 import sys
+import pygame
 import random
 
 class GUIManager:
     def __init__(self):
         pygame.init()
-        pygame.mixer.init()  # Initialize the mixer for sound effects
-        self.screen_width = 1024  # Increased width
-        self.screen_height = 768  # Increased height
+        self.screen_width = 1024  # Adjusted screen width
+        self.screen_height = 768  # Adjusted screen height
         self.bg_color = (30, 30, 30)
         self.screen = pygame.display.set_mode((self.screen_width, self.screen_height))
         pygame.display.set_caption("Dice Game")
         self.clock = pygame.time.Clock()
         self.assets = {}
+        self.sounds = {}  # Add a dictionary for sounds
         self.font = pygame.font.SysFont(None, 36)
         self.powerup_names = {
             'reroll_single_dice': 'Reroll Single Dice',
             'double_tokens_if_win': 'Double Tokens If Win',
-            'set_dice_to_one': 'Set Dice to ①',
+            'set_dice_to_one': 'Set Dice to 1',
             'set_dice_to_number': 'Set Dice to Desired Number'
         }
-        self.load_assets()  # Moved after defining powerup_names
-        self.load_sounds()   # Load sound effects
+        self.base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))  # For PyInstaller
+        self.load_assets()
+        self.load_sounds()
 
     def load_assets(self):
-        # Load images and other assets
+        # Base path for assets, adjusted for PyInstaller
+        self.base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+
+        # Load dice face images
         self.assets['dice_faces'] = {}
         for i in range(1, 7):
-            image = pygame.image.load(f'images/dice/dice_face_{i}.png').convert_alpha()
-            self.assets['dice_faces'][i] = pygame.transform.scale(image, (64, 64))
+            image_path = os.path.join(self.base_path, 'images', 'dice', f'dice_face_{i}.png')
+            self.assets['dice_faces'][i] = pygame.image.load(image_path).convert_alpha()
+
         # Load power-up images
         self.assets['powerups'] = {}
         for key in self.powerup_names.keys():
-            image = pygame.image.load(f'images/powerups/{key}.png').convert_alpha()
-            self.assets['powerups'][key] = image  # Keep original size
+            image_path = os.path.join(self.base_path, 'images', 'powerups', f'{key}.png')
+            if not os.path.exists(image_path):
+                raise FileNotFoundError(f"Power-up image '{image_path}' not found.")
+            self.assets['powerups'][key] = pygame.image.load(image_path).convert_alpha()
+
 
     def load_sounds(self):
-        # Load sound effects
-        self.sounds = {}
-        self.sounds['button_click'] = pygame.mixer.Sound('sounds/button_click.wav')
-        self.sounds['dice_roll'] = pygame.mixer.Sound('sounds/dice_roll.wav')
-        self.sounds['powerup_purchase'] = pygame.mixer.Sound('sounds/powerup_purchase.wav')
-        self.sounds['powerup_apply'] = pygame.mixer.Sound('sounds/powerup_apply.wav')
+        # Load sounds for button clicks, dice rolling, and power-ups
+        self.sounds['button_click'] = pygame.mixer.Sound(os.path.join(self.base_path, 'sounds', 'button_click.wav'))
+        self.sounds['dice_roll'] = pygame.mixer.Sound(os.path.join(self.base_path, 'sounds', 'dice_roll.wav'))
+        self.sounds['powerup_use'] = pygame.mixer.Sound(os.path.join(self.base_path, 'sounds', 'powerup_use.wav'))
+        self.sounds['purchase'] = pygame.mixer.Sound(os.path.join(self.base_path, 'sounds', 'purchase.wav'))
+
 
     def load_image(self, path):
-        image = pygame.image.load(path).convert_alpha()
-        return image
+        # Adjust path for PyInstaller (_MEIPASS is the extracted temp folder for the bundled app)
+        base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+        full_path = os.path.join(base_path, path)
+        if not os.path.exists(full_path):
+            raise FileNotFoundError(f"No file '{full_path}' found.")
+        return pygame.image.load(full_path).convert_alpha()
 
     def display_dice(self, dice_values, position):
         # Display the dice images based on the values
@@ -67,7 +78,7 @@ class GUIManager:
         self.screen.blit(text_surface, position)
 
     def clear_screen(self):
-        self.screen.fill(self.bg_color)  # Clear the screen with background color
+        self.screen.fill(self.bg_color)
 
     class Button:
         def __init__(self, gui_manager, rect, text, callback, font_size=36):
@@ -293,6 +304,20 @@ class GUIManager:
             self.clock.tick(60)
 
         return selected_number
+    
+    def play_bgm(self, loop=True, volume=0.5):
+        """Play background music."""
+        bgm_path = os.path.join(self.base_path, 'sounds', 'bgm.mp3')  # Adjusted path for PyInstaller
+        if not os.path.exists(bgm_path):
+            raise FileNotFoundError(f"No background music file found at '{bgm_path}'.")
+        pygame.mixer.music.load(bgm_path)
+        pygame.mixer.music.set_volume(volume)  # Set the volume (0.0 to 1.0)
+        pygame.mixer.music.play(-1 if loop else 0)
+        
+    def stop_bgm(self):
+        """Stop the background music."""
+        pygame.mixer.music.stop()
+
 
     def set_selected_number(self, number):
         self.selected_number = number

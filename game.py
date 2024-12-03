@@ -9,28 +9,25 @@ import config  # Import config.py
 class Game:
     def __init__(self):
         self.gui = GUIManager()
-        self.player_tokens = config.INITIAL_TOKENS  # Starting tokens from config
+        self.player_tokens = 20  # Starting tokens
         self.current_opponent = None
         self.running = True  # Game loop control
-        self.back_to_menu = False  # Add back_to_menu flag
-        self.restart_clicked = False  # Initialize restart flag
-        self.last_selected_level = None  # Remember last selected level
-        self.last_selected_multiplier = None  # Remember last selected multiplier
-        self.shop = Shop()  # Initialize the shop
-        self.player = Player("Player")  # Create a player instance
+        self.back_to_menu = False
+        self.restart_clicked = False
+        self.last_selected_level = None
+        self.last_selected_multiplier = None
+        self.shop = Shop()
+        self.player = Player("Player")
+        self.gui.play_bgm(volume=config.BGM_VOLUME)  # Play the background music on game start
 
     def start(self):
         while self.running:
-            # Check if player tokens are less than minimum required to play
-            if self.player_tokens < config.MINIMUM_TOKENS_TO_PLAY:
+            if self.player_tokens < 5:
                 self.display_game_over()
-                # After game over, check if restart was clicked
                 if self.restart_clicked:
-                    # Reset tokens already done in restart_game
-                    self.restart_clicked = False  # Reset the flag
-                    continue  # Continue the game loop
+                    self.restart_clicked = False
+                    continue
                 else:
-                    # Not restarting, exit the game loop
                     break
             self.main_menu()
 
@@ -307,7 +304,7 @@ class Game:
             self.player_tokens -= price
             self.player.add_powerup(powerup_key)
             # Play power-up purchase sound
-            self.gui.sounds['powerup_purchase'].play()
+            self.gui.sounds['purchase'].play()
             # Directly update the shop display without showing a confirmation screen
         else:
             # Not enough tokens
@@ -317,6 +314,7 @@ class Game:
             pygame.time.wait(2000)
 
     def quit_game(self):
+        self.gui.stop_bgm()  # Stop the background music on quit
         self.running = False
         pygame.quit()
         sys.exit()

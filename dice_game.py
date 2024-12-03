@@ -166,7 +166,7 @@ class DiceGame:
             return
 
         # Play power-up apply sound
-        self.gui.sounds['powerup_apply'].play()
+        self.gui.sounds['powerup_use'].play()
 
         if powerup_key == 'reroll_single_dice':
             # Ask the player which dice to reroll

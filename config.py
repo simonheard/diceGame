@@ -5,6 +5,8 @@
 # - AI player's dice and scores are displayed
 DEBUG = False  
 
+BGM_VOLUME = 0.3  # Background music volume
+
 # Initial player tokens
 INITIAL_TOKENS = 20
 
